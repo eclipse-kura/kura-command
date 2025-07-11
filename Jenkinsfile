@@ -16,14 +16,14 @@ spec:
         deleteDir()
 
         stage('prepare') {
-            dir('kura-management-ui') {
+            dir('kura-command') {
                 checkout scm
             }
 
         }
 
 
-        stage('Build kura-management-ui') {
+        stage('Build kura-command') {
             timeout(time: 2, unit: 'HOURS') {
                 dir('kura-command') {
                     withMaven(jdk: 'temurin-jdk17-latest', maven: 'apache-maven-3.9.6') {
