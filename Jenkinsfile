@@ -16,7 +16,6 @@ node {
 
     }
 
-
     stage('Build kura-command') {
         timeout(time: 2, unit: 'HOURS') {
             dir('kura-command') {
@@ -67,4 +66,3 @@ stage('quality-gate') {
         }
     }
 }
-
