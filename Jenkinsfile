@@ -29,7 +29,7 @@ node {
 
     stage('Sonar') {
         timeout(time: 2, unit: 'HOURS') {
-            dir("kura-position") {
+            dir("kura-command") {
                 withMaven(jdk: 'temurin-jdk17-latest', maven: 'apache-maven-3.9.6', options: [artifactsPublisher(disabled: true)]) {
                     withCredentials([string(credentialsId: 'sonarcloud-token-kura-command', variable: 'SONARCLOUD_TOKEN')]) {
                         withSonarQubeEnv {
@@ -59,7 +59,7 @@ node {
 stage('quality-gate') {
     // Sonar quality gate
     timeout(time: 30, unit: 'MINUTES') {
-        withCredentials([string(credentialsId: 'sonarcloud-token-kura-position', variable: 'SONARCLOUD_TOKEN')]) {
+        withCredentials([string(credentialsId: 'sonarcloud-token-kura-command', variable: 'SONARCLOUD_TOKEN')]) {
             def qg = waitForQualityGate()
             if (qg.status != 'OK') {
                 error "Pipeline aborted due to sonar quality gate failure: ${qg.status}"
