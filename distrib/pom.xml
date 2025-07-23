@@ -37,6 +37,11 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.kura</groupId>
+            <artifactId>org.eclipse.kura.linux.command</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.kura</groupId>
             <artifactId>org.eclipse.kura.rest.command.provider</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -54,6 +59,7 @@
         <!-- name of the JAR produced in bundles/target -->
         <rest.command.jar.name>org.eclipse.kura.rest.command.provider-${project.version}.jar</rest.command.jar.name>
         <cloud.command.jar.name>org.eclipse.kura.core.cloud.command-${project.version}.jar</cloud.command.jar.name>
+        <linux.command.jar.name>org.eclipse.kura.linux.command-${project.version}.jar</linux.command.jar.name>
 
         <deb.architecture>all</deb.architecture>
 
@@ -212,6 +218,17 @@
                             <controlDir>${project.basedir}/deb/control</controlDir>
                             <skipPOMs>false</skipPOMs>
                             <dataSet>
+                                <data>
+                                    <src>${project.build.directory}/plugins/${linux.command.jar.name}</src>
+                                    <type>file</type>
+                                    <mapper>
+                                        <type>perm</type>
+                                        <prefix>${addon.installation.dir}/4</prefix>
+                                        <user>kurad</user>
+                                        <group>kurad</group>
+                                        <filemode>600</filemode>
+                                    </mapper>
+                                </data>
                                 <data>
                                     <src>${project.build.directory}/plugins/${cloud.command.jar.name}</src>
                                     <type>file</type>

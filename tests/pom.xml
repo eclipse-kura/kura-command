@@ -399,6 +399,7 @@
 
     <modules>
         <module>org.eclipse.kura.core.cloud.command.test</module>
+        <module>org.eclipse.kura.linux.command.test</module>
         <module>org.eclipse.kura.rest.command.provider.test</module>
     </modules>
 
