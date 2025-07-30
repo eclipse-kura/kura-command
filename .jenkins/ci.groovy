@@ -1,4 +1,4 @@
-@Library('add-ons-shared-libs@develop') _
+@Library('add-ons-shared-libs@debug/param_validation') _
 
 node {
     continuousIntegrationPipeline(
