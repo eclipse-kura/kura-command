@@ -1,4 +1,4 @@
-@Library('add-ons-shared-libs@develop') _
+@Library('add-ons-shared-libs@ci/fix_main_branch_builds') _
 
 node {
     continuousIntegrationPipeline(
