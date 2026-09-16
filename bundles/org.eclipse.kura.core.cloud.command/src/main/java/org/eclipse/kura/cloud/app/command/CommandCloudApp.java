@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2024 Eurotech and/or its affiliates and others
+ * Copyright (c) 2011, 2026 Eurotech and/or its affiliates and others
  * 
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -10,6 +10,7 @@
  * Contributors:
  *  Eurotech
  *******************************************************************************/
+
 package org.eclipse.kura.cloud.app.command;
 
 import static org.eclipse.kura.cloudconnection.request.RequestHandlerMessageConstants.ARGS_KEY;
@@ -17,13 +18,21 @@ import static org.eclipse.kura.cloudconnection.request.RequestHandlerMessageCons
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.Charsets;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
 import org.eclipse.kura.cloudconnection.message.KuraMessage;
@@ -35,6 +44,7 @@ import org.eclipse.kura.configuration.ConfigurableComponent;
 import org.eclipse.kura.configuration.Password;
 import org.eclipse.kura.crypto.CryptoService;
 import org.eclipse.kura.executor.Command;
+import org.eclipse.kura.executor.CommandExecutorService;
 import org.eclipse.kura.executor.CommandStatus;
 import org.eclipse.kura.executor.PrivilegedExecutorService;
 import org.eclipse.kura.executor.UnprivilegedExecutorService;
@@ -55,6 +65,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
     private static final String COMMAND_TIMEOUT_ID = "command.timeout";
     private static final String COMMAND_ENVIRONMENT_ID = "command.environment";
     private static final String COMMAND_PRIVILEGED = "privileged.command.service.enable";
+
+    private static final String STAGING_PREFIX = "kura-command-archive-";
 
     public static final String APP_ID = "CMD-V1";
     public static final String RESOURCE_COMMAND = "command";
@@ -229,13 +241,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
             String dir = getDir(commandReq);
 
             byte[] zipBytes = commandReq.getZipBytes();
-            if (zipBytes != null) {
-                try {
-                    UnZip.unZipBytes(zipBytes, dir);
-                } catch (IOException e) {
-                    logger.error("Error unzipping command zip bytes", e);
-                    throw new KuraException(KuraErrorCode.DECODER_ERROR, "file");
-                }
+            if (zipBytes != null && UnZip.isZipCompressed(zipBytes)) {
+                extractArchive(zipBytes, dir, getTimeout(commandReq));
             }
 
             boolean runAsync = commandReq.isRunAsync() != null && commandReq.isRunAsync();
@@ -310,11 +317,10 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
 
     private String getDir(KuraCommandRequestPayload req) {
         String dir = req.getWorkingDir();
-        String defaultDir = getDefaultWorkDir();
         if (dir != null && !dir.isEmpty()) {
-            return dir;
+            return Paths.get(dir).toAbsolutePath().normalize().toString();
         }
-        return defaultDir;
+        return Paths.get(getDefaultWorkDir()).toAbsolutePath().normalize().toString();
     }
 
     private int getTimeout(KuraCommandRequestPayload req) {
@@ -431,6 +437,140 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
                 resp.setResponseCode(KuraResponsePayload.RESPONSE_CODE_ERROR);
                 resp.setExceptionMessage(new String(err.toByteArray(), Charsets.UTF_8));
             }
+        }
+    }
+
+    private void extractArchive(final byte[] zipBytes, final String destDir, final int timeout) throws KuraException {
+        final Path stagingDir = createStagingDirectory();
+
+        try {
+            unZipInStagingDirectory(zipBytes, stagingDir);
+
+            createWorkingDirectory(destDir, timeout);
+            copyToWorkingDirectory(stagingDir, destDir, timeout);
+        } finally {
+            FileUtils.deleteQuietly(stagingDir.toFile());
+        }
+    }
+
+    private Path createStagingDirectory() throws KuraException {
+        try {
+            final Path stagingDir = Files.createTempDirectory(STAGING_PREFIX);
+            Files.setPosixFilePermissions(stagingDir, PosixFilePermissions.fromString("rwxr-xr-x"));
+
+            return stagingDir;
+        } catch (IOException e) {
+            logger.error("Unable to create the staging directory for the command archive", e);
+            throw new KuraException(KuraErrorCode.DECODER_ERROR, "file");
+        }
+    }
+
+    private void unZipInStagingDirectory(final byte[] zipBytes, final Path stagingDir) throws KuraException {
+        try {
+            UnZip.unZipBytes(zipBytes, stagingDir.toString());
+        } catch (IOException | RuntimeException e) {
+            logger.error("Error unzipping command zip bytes", e);
+            throw new KuraException(KuraErrorCode.DECODER_ERROR, "file");
+        }
+    }
+
+    private void createWorkingDirectory(final String destDir, final int timeout) throws KuraException {
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        final Command mkdir = new Command(new String[] { "mkdir", "-p", shellQuote(destDir) });
+        mkdir.setExecuteInAShell(true);
+        mkdir.setTimeout(timeout);
+        mkdir.setErrorStream(err);
+        mkdir.setOutputStream(new ByteArrayOutputStream());
+
+        verify(commandExecutor().execute(mkdir), err, "create the working directory " + destDir);
+    }
+
+    private void copyToWorkingDirectory(final Path stagingDir, final String destDir, final int timeout)
+            throws KuraException {
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        final Command copy = new Command(new String[] { "cp", "-a", "--remove-destination",
+                shellQuote(stagingDir.toString() + "/."), shellQuote(destDir + "/") });
+        copy.setExecuteInAShell(true);
+        copy.setTimeout(timeout);
+        copy.setErrorStream(err);
+        copy.setOutputStream(new ByteArrayOutputStream());
+
+        final CommandStatus status = commandExecutor().execute(copy);
+
+        try {
+            verify(status, err, "copy the command archive into " + destDir);
+        } catch (KuraException e) {
+            removeCopiedEntries(stagingDir, destDir, timeout);
+            throw e;
+        }
+    }
+
+    private void removeCopiedEntries(final Path stagingDir, final String destDir, final int timeout) {
+        final List<String> copiedFiles = new ArrayList<>();
+        final List<String> copiedDirectories = new ArrayList<>();
+
+        try (final Stream<Path> stagingEntries = Files.walk(stagingDir)) {
+            stagingEntries.filter(entry -> !entry.equals(stagingDir)).forEach(entry -> {
+                final String relative = stagingDir.relativize(entry).toString();
+                if (Files.isDirectory(entry)) {
+                    copiedDirectories.add(0, relative);
+                } else {
+                    copiedFiles.add(relative);
+                }
+            });
+        } catch (IOException e) {
+            logger.warn("Unable to list the entries left in {} by the failed copy", destDir, e);
+            return;
+        }
+
+        removeQuietly(destDir, new String[] { "rm", "-f" }, copiedFiles, timeout);
+        removeQuietly(destDir, new String[] { "rmdir" }, copiedDirectories, timeout);
+    }
+
+    private void removeQuietly(final String dir, final String[] executable, final List<String> paths,
+            final int timeout) {
+        if (paths.isEmpty()) {
+            return;
+        }
+
+        logger.debug("Cleaning up: {}", paths);
+
+        final List<String> commandLine = new ArrayList<>(Arrays.asList(executable));
+        paths.stream().map(CommandCloudApp::shellQuote).forEach(commandLine::add);
+
+        final Command cleanup = new Command(commandLine.toArray(new String[0]));
+        cleanup.setExecuteInAShell(true);
+        cleanup.setDirectory(dir);
+        cleanup.setTimeout(timeout);
+        cleanup.setOutputStream(new ByteArrayOutputStream());
+        cleanup.setErrorStream(new ByteArrayOutputStream());
+
+        final CommandStatus status = commandExecutor().execute(cleanup);
+
+        if (status.isTimedout() || status.getExitStatus().getExitCode() != 0) {
+            logger.warn("Some entries left in {} by the failed copy could not be removed", dir);
+        }
+    }
+
+    private CommandExecutorService commandExecutor() {
+        return this.isPrivileged ? this.privilegedExecutorService : this.unprivilegedExecutorService;
+    }
+
+    private static String shellQuote(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
+    }
+
+    private void verify(CommandStatus status, ByteArrayOutputStream err, String action) throws KuraException {
+        if (status.isTimedout()) {
+            throw new KuraException(KuraErrorCode.DECODER_ERROR, "Timed out while trying to " + action);
+        }
+
+        int exitCode = status.getExitStatus().getExitCode();
+        if (exitCode != 0) {
+            throw new KuraException(KuraErrorCode.DECODER_ERROR, "Unable to " + action + " (exit code: " + exitCode
+                    + "): " + new String(err.toByteArray(), StandardCharsets.UTF_8));
         }
     }
 
