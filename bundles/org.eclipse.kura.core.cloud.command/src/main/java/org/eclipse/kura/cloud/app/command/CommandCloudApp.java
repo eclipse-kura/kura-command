@@ -220,6 +220,10 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
 
     @Override
     public KuraPayload execute(KuraPayload reqPayload) throws KuraException {
+        if (!this.currentStatus) {
+            throw new KuraException(KuraErrorCode.SERVICE_UNAVAILABLE, "The command service is not enabled");
+        }
+
         KuraCommandRequestPayload commandReq = new KuraCommandRequestPayload(reqPayload);
 
         String receivedPassword = (String) commandReq.getMetric(EDC_PASSWORD_METRIC_NAME);
