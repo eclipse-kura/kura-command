@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, 2022 Eurotech and/or its affiliates and others
+ * Copyright (c) 2017, 2026 Eurotech and/or its affiliates and others
  * 
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -9,7 +9,7 @@
  * 
  * Contributors:
  *  Eurotech
- ******************************************************************************/
+ *******************************************************************************/
 package org.eclipse.kura.cloud.app.command;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -875,5 +875,32 @@ public class CommandCloudAppTest {
 
         assertNotNull(response);
         verify(privilegedExecutorServiceMock, times(0)).execute(any());
+    }
+
+    @Test
+    public void testExecutePayloadServiceDisabled() throws KuraException {
+        CommandCloudApp cca = new CommandCloudApp();
+        
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("command.password.value", "pass");
+        properties.put("command.enable", false);
+        
+        try {
+            cca.updated(properties);
+        } catch (Exception e) {
+            // ignore the expected exception
+        }
+        
+        KuraPayload payload = new KuraPayload();
+        payload.addMetric("command.password", "pass");
+        payload.addMetric("command.command", "test");
+        
+        try {
+            cca.execute(payload);
+            fail("KuraException not thrown");
+        } catch (KuraException e) {
+            assertEquals(KuraErrorCode.SERVICE_UNAVAILABLE, e.getCode());
+            assertTrue(e.getMessage().contains("command service is not enabled"));
+        }
     }
 }
