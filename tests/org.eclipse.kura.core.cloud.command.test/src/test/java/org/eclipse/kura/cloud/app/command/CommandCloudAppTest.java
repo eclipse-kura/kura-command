@@ -34,11 +34,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
@@ -64,6 +71,9 @@ import org.osgi.service.component.ComponentException;
 public class CommandCloudAppTest {
 
     public static final String METRIC_RESPONSE_CODE = "response.code";
+
+    private UnprivilegedExecutorService unprivilegedExecutorServiceMock;
+    private PrivilegedExecutorService privilegedExecutorServiceMock;
 
     @Test
     public void testUpdatedDecryptException() throws KuraException, NoSuchFieldException {
@@ -882,48 +892,122 @@ public class CommandCloudAppTest {
     }
 
     @Test
-    public void testZipIsExtractedByTheUnprivilegedExecutor() throws KuraException {
-        testZipIsExtractedByTheSelectedExecutor(false);
+    public void testZipIsExtractedByTheUnprivilegedExecutor() throws KuraException, IOException {
+        Path workDir = Files.createTempDirectory("command-cloud-app-test");
+        try {
+            CommandCloudApp cca = givenCommandCloudApp(false, workDir);
+
+            cca.execute(commandPayload("ls", zipWithFiles(1)));
+
+            ArgumentCaptor<Command> commands = ArgumentCaptor.forClass(Command.class);
+            verify(this.unprivilegedExecutorServiceMock, times(2)).execute(commands.capture());
+            verify(this.privilegedExecutorServiceMock, times(0)).execute(any());
+
+            List<Command> executed = commands.getAllValues();
+            assertNotNull("the archive is extracted first, by a command reading it",
+                    executed.get(0).getInputStream());
+            assertEquals("ls", executed.get(1).getCommandLine()[0]);
+        } finally {
+            deleteRecursively(workDir);
+        }
     }
 
     @Test
-    public void testZipIsExtractedByThePrivilegedExecutor() throws KuraException {
-        testZipIsExtractedByTheSelectedExecutor(true);
+    public void testZipIsExtractedDirectlyWhenPrivileged() throws KuraException, IOException {
+        Path workDir = Files.createTempDirectory("command-cloud-app-test");
+        try {
+            CommandCloudApp cca = givenCommandCloudApp(true, workDir);
+
+            cca.execute(commandPayload("ls", zipWithFiles(1)));
+
+            ArgumentCaptor<Command> commands = ArgumentCaptor.forClass(Command.class);
+            verify(this.privilegedExecutorServiceMock, times(1)).execute(commands.capture());
+            verify(this.unprivilegedExecutorServiceMock, times(0)).execute(any());
+
+            assertEquals("only the command is executed", "ls", commands.getValue().getCommandLine()[0]);
+            assertEquals(Collections.singletonList("file1.txt"), listFiles(workDir));
+            assertEquals("content of file1.txt", new String(Files.readAllBytes(workDir.resolve("file1.txt")), UTF_8));
+        } finally {
+            deleteRecursively(workDir);
+        }
     }
 
-    private void testZipIsExtractedByTheSelectedExecutor(boolean privileged) throws KuraException {
+    @Test
+    public void testZipExceedingTheLimitsIsRejectedWhenPrivileged() throws KuraException, IOException {
+        Path workDir = Files.createTempDirectory("command-cloud-app-test");
+        try {
+            CommandCloudApp cca = givenCommandCloudApp(true, workDir);
+
+            try {
+                cca.execute(commandPayload("ls", zipWithFiles(1025)));
+                fail("KuraException expected");
+            } catch (KuraException e) {
+                assertEquals(KuraErrorCode.DECODER_ERROR, e.getCode());
+            }
+
+            verify(this.privilegedExecutorServiceMock, times(0)).execute(any());
+            verify(this.unprivilegedExecutorServiceMock, times(0)).execute(any());
+            assertEquals("the partial extraction is removed", Collections.emptyList(), listFiles(workDir));
+        } finally {
+            deleteRecursively(workDir);
+        }
+    }
+
+    private CommandCloudApp givenCommandCloudApp(boolean privileged, Path workDir) throws KuraException {
         CommandStatus status = new CommandStatus(new Command(new String[] {}), new LinuxExitStatus(0));
 
-        UnprivilegedExecutorService unprivilegedExecutorServiceMock = mock(UnprivilegedExecutorService.class);
-        when(unprivilegedExecutorServiceMock.execute(any())).thenReturn(status);
-        PrivilegedExecutorService privilegedExecutorServiceMock = mock(PrivilegedExecutorService.class);
-        when(privilegedExecutorServiceMock.execute(any())).thenReturn(status);
+        this.unprivilegedExecutorServiceMock = mock(UnprivilegedExecutorService.class);
+        when(this.unprivilegedExecutorServiceMock.execute(any())).thenReturn(status);
+        this.privilegedExecutorServiceMock = mock(PrivilegedExecutorService.class);
+        when(this.privilegedExecutorServiceMock.execute(any())).thenReturn(status);
 
         CommandCloudApp cca = new CommandCloudApp();
-        cca.setUnprivilegedExecutorService(unprivilegedExecutorServiceMock);
-        cca.setPrivilegedExecutorService(privilegedExecutorServiceMock);
+        cca.setUnprivilegedExecutorService(this.unprivilegedExecutorServiceMock);
+        cca.setPrivilegedExecutorService(this.privilegedExecutorServiceMock);
 
         Map<String, Object> properties = new HashMap<>();
         properties.put("command.enable", true);
         properties.put("command.timeout", 10);
+        properties.put("command.working.directory", workDir.toString());
         properties.put("privileged.command.service.enable", privileged);
         cca.updated(properties);
 
+        return cca;
+    }
+
+    private static KuraPayload commandPayload(String command, byte[] zip) {
         KuraPayload payload = new KuraPayload();
-        payload.addMetric("command.command", "ls");
-        payload.setBody("zip".getBytes());
+        payload.addMetric("command.command", command);
+        payload.setBody(zip);
+        return payload;
+    }
 
-        cca.execute(payload);
+    private static byte[] zipWithFiles(int count) throws IOException {
+        ByteArrayOutputStream archive = new ByteArrayOutputStream();
 
-        CommandExecutorService selected = privileged ? privilegedExecutorServiceMock : unprivilegedExecutorServiceMock;
-        CommandExecutorService other = privileged ? unprivilegedExecutorServiceMock : privilegedExecutorServiceMock;
+        try (ZipOutputStream zos = new ZipOutputStream(archive)) {
+            for (int i = 1; i <= count; i++) {
+                String name = "file" + i + ".txt";
+                zos.putNextEntry(new ZipEntry(name));
+                zos.write(("content of " + name).getBytes(UTF_8));
+                zos.closeEntry();
+            }
+        }
 
-        ArgumentCaptor<Command> commands = ArgumentCaptor.forClass(Command.class);
-        verify(selected, times(2)).execute(commands.capture());
-        verify(other, times(0)).execute(any());
+        return archive.toByteArray();
+    }
 
-        List<Command> executed = commands.getAllValues();
-        assertNotNull("the archive is extracted first, by a command reading it", executed.get(0).getInputStream());
-        assertEquals("ls", executed.get(1).getCommandLine()[0]);
+    private static List<String> listFiles(Path folder) throws IOException {
+        try (Stream<Path> files = Files.list(folder)) {
+            return files.map(file -> file.getFileName().toString()).sorted().collect(Collectors.toList());
+        }
+    }
+
+    private static void deleteRecursively(Path folder) throws IOException {
+        try (Stream<Path> paths = Files.walk(folder)) {
+            for (Path path : (Iterable<Path>) paths.sorted(Comparator.reverseOrder())::iterator) {
+                Files.deleteIfExists(path);
+            }
+        }
     }
 }
