@@ -342,7 +342,6 @@
 
     <modules>
         <module>org.eclipse.kura.core.cloud.command</module>
-        <module>org.eclipse.kura.linux.command</module>
         <module>org.eclipse.kura.rest.command.provider</module>
     </modules>
 </project>
