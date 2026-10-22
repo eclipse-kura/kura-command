@@ -1,19 +1,18 @@
 /*******************************************************************************
  * Copyright (c) 2011, 2024 Eurotech and/or its affiliates and others
- * 
+ *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
  * which is available at https://www.eclipse.org/legal/epl-2.0/
- * 
+ *
  * SPDX-License-Identifier: EPL-2.0
- * 
+ *
  * Contributors:
  *  Eurotech
  *******************************************************************************/
 package org.eclipse.kura.cloud.app.command;
 
 import java.util.Vector;
-
 import org.eclipse.kura.message.KuraPayload;
 import org.eclipse.kura.message.KuraRequestPayload;
 
@@ -46,7 +45,7 @@ public class KuraCommandRequestPayload extends KuraRequestPayload {
     public String[] getArguments() {
         Vector<String> v = new Vector<String>();
 
-        for (int i = 0;; i++) {
+        for (int i = 0; ; i++) {
             String value = (String) getMetric(METRIC_ARG + i);
             if (value != null && !value.isEmpty()) {
                 v.add(value);
@@ -73,7 +72,7 @@ public class KuraCommandRequestPayload extends KuraRequestPayload {
     public String[] getEnvironmentPairs() {
         Vector<String> v = new Vector<String>();
 
-        for (int i = 0;; i++) {
+        for (int i = 0; ; i++) {
             String value = (String) getMetric(METRIC_ENVP + i);
             if (value != null) {
                 v.add(value);

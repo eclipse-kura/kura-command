@@ -14,10 +14,16 @@ package org.eclipse.kura.internal.rest.command;
 
 import static org.eclipse.kura.cloudconnection.request.RequestHandlerMessageConstants.ARGS_KEY;
 
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
 import org.eclipse.kura.cloud.app.command.CommandCloudApp;
@@ -31,14 +37,6 @@ import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import jakarta.annotation.security.RolesAllowed;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 @Path("/command/v1")
 public class CommandRestService {
@@ -58,7 +56,6 @@ public class CommandRestService {
 
     public void setCommandCloudApp(CommandCloudApp commandCloudApp) {
         this.commandCloudApp = commandCloudApp;
-
     }
 
     /**
@@ -114,8 +111,8 @@ public class CommandRestService {
 
     private KuraMessage buildKuraMessage(RestCommandRequest restCommandPayload, boolean isAsync) {
 
-        KuraCommandRequestPayload kuraCommandRequestPayload = new KuraCommandRequestPayload(
-                restCommandPayload.getCommand());
+        KuraCommandRequestPayload kuraCommandRequestPayload =
+                new KuraCommandRequestPayload(restCommandPayload.getCommand());
 
         kuraCommandRequestPayload.addMetric(PASSWORD_METRIC_NAME, restCommandPayload.getPassword());
         kuraCommandRequestPayload.setZipBytes(restCommandPayload.getZipBytesAsByteArray());
@@ -136,8 +133,8 @@ public class CommandRestService {
 
         if (kuraMessage.getPayload() instanceof KuraCommandResponsePayload) {
             RestCommandResponse restCommandResponse = new RestCommandResponse();
-            KuraCommandResponsePayload kuraCommandResponsePayload = (KuraCommandResponsePayload) kuraMessage
-                    .getPayload();
+            KuraCommandResponsePayload kuraCommandResponsePayload =
+                    (KuraCommandResponsePayload) kuraMessage.getPayload();
 
             restCommandResponse.setStdout(kuraCommandResponsePayload.getStdout());
             restCommandResponse.setStderr(kuraCommandResponsePayload.getStderr());
@@ -149,5 +146,4 @@ public class CommandRestService {
             throw new KuraException(KuraErrorCode.BAD_REQUEST);
         }
     }
-
 }

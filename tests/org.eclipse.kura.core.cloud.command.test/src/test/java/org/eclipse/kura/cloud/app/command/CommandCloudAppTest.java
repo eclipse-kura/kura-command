@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright (c) 2017, 2026 Eurotech and/or its affiliates and others
- * 
+ *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
  * which is available at https://www.eclipse.org/legal/epl-2.0/
- * 
+ *
  * SPDX-License-Identifier: EPL-2.0
- * 
+ *
  * Contributors:
  *  Eurotech
  ******************************************************************************/
@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
 import org.eclipse.kura.cloud.CloudClient;
@@ -57,7 +56,6 @@ import org.eclipse.kura.core.linux.executor.LinuxExitStatus;
 import org.eclipse.kura.core.testutil.TestUtil;
 import org.eclipse.kura.crypto.CryptoService;
 import org.eclipse.kura.executor.Command;
-import org.eclipse.kura.executor.CommandExecutorService;
 import org.eclipse.kura.executor.CommandStatus;
 import org.eclipse.kura.executor.PrivilegedExecutorService;
 import org.eclipse.kura.executor.UnprivilegedExecutorService;
@@ -300,7 +298,7 @@ public class CommandCloudAppTest {
 
         Object[] result = (Object[]) TestUtil.invokePrivate(cca, "getDefaultEnvironment", null);
 
-        assertArrayEquals(new Object[] { "e1", "e2", "e3" }, result);
+        assertArrayEquals(new Object[] {"e1", "e2", "e3"}, result);
     }
 
     @Test
@@ -315,7 +313,7 @@ public class CommandCloudAppTest {
         KuraCommandRequestPayload payload = new KuraCommandRequestPayload("cmd");
         Object[] result = (Object[]) TestUtil.invokePrivate(cca, "getEnvironment", payload);
 
-        assertArrayEquals(new Object[] { "e1", "e2", "e3" }, result);
+        assertArrayEquals(new Object[] {"e1", "e2", "e3"}, result);
     }
 
     @Test
@@ -328,7 +326,7 @@ public class CommandCloudAppTest {
         TestUtil.setFieldValue(cca, "properties", properties);
 
         KuraCommandRequestPayload payload = new KuraCommandRequestPayload("cmd");
-        String[] environmentPairs = new String[] { "env1", "env2" };
+        String[] environmentPairs = new String[] {"env1", "env2"};
         payload.setEnvironmentPairs(environmentPairs);
         Object[] result = (Object[]) TestUtil.invokePrivate(cca, "getEnvironment", payload);
 
@@ -400,8 +398,8 @@ public class CommandCloudAppTest {
 
         TestUtil.invokePrivate(cca, "prepareResponse", resp, status, baos, baes);
 
-        assertEquals("Response expected not to be changed", KuraResponsePayload.RESPONSE_CODE_OK,
-                resp.getResponseCode());
+        assertEquals(
+                "Response expected not to be changed", KuraResponsePayload.RESPONSE_CODE_OK, resp.getResponseCode());
         assertEquals(err, resp.getStderr());
         assertEquals(out, resp.getStdout());
         assertFalse(resp.isTimedout());
@@ -427,8 +425,8 @@ public class CommandCloudAppTest {
 
         TestUtil.invokePrivate(cca, "prepareResponse", resp, status, baos, baes);
 
-        assertEquals("Response expected to be changed", KuraResponsePayload.RESPONSE_CODE_ERROR,
-                resp.getResponseCode());
+        assertEquals(
+                "Response expected to be changed", KuraResponsePayload.RESPONSE_CODE_ERROR, resp.getResponseCode());
         assertEquals(err, resp.getStderr());
         assertEquals(out, resp.getStdout());
         assertFalse(resp.isTimedout());
@@ -454,8 +452,8 @@ public class CommandCloudAppTest {
 
         TestUtil.invokePrivate(cca, "prepareResponse", resp, status, baos, baes);
 
-        assertEquals("Response expected not to be changed", KuraResponsePayload.RESPONSE_CODE_OK,
-                resp.getResponseCode());
+        assertEquals(
+                "Response expected not to be changed", KuraResponsePayload.RESPONSE_CODE_OK, resp.getResponseCode());
         assertEquals(err, resp.getStderr());
         assertEquals(out, resp.getStdout());
         assertTrue(resp.isTimedout());
@@ -467,11 +465,11 @@ public class CommandCloudAppTest {
 
         String cmd = "cmd";
         KuraCommandRequestPayload payload = new KuraCommandRequestPayload(cmd);
-        String[] arguments = new String[] { "arg1", "arg2" };
+        String[] arguments = new String[] {"arg1", "arg2"};
         payload.setArguments(arguments);
         String[] result = (String[]) TestUtil.invokePrivate(cca, "prepareCommandArray", payload, cmd);
 
-        assertArrayEquals(new String[] { "cmd", "arg1", "arg2" }, result);
+        assertArrayEquals(new String[] {"cmd", "arg1", "arg2"}, result);
     }
 
     @Test(expected = KuraException.class)
@@ -904,7 +902,8 @@ public class CommandCloudAppTest {
             verify(this.privilegedExecutorServiceMock, times(0)).execute(any());
 
             List<Command> executed = commands.getAllValues();
-            assertNotNull("the archive is extracted first, by a command reading it",
+            assertNotNull(
+                    "the archive is extracted first, by a command reading it",
                     executed.get(0).getInputStream());
             assertEquals("ls", executed.get(1).getCommandLine()[0]);
         } finally {
@@ -924,7 +923,8 @@ public class CommandCloudAppTest {
             verify(this.privilegedExecutorServiceMock, times(1)).execute(commands.capture());
             verify(this.unprivilegedExecutorServiceMock, times(0)).execute(any());
 
-            assertEquals("only the command is executed", "ls", commands.getValue().getCommandLine()[0]);
+            assertEquals(
+                    "only the command is executed", "ls", commands.getValue().getCommandLine()[0]);
             assertEquals(Collections.singletonList("file1.txt"), listFiles(workDir));
             assertEquals("content of file1.txt", new String(Files.readAllBytes(workDir.resolve("file1.txt")), UTF_8));
         } finally {
