@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright (c) 2011, 2026 Eurotech and/or its affiliates and others
- * 
+ *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
  * which is available at https://www.eclipse.org/legal/epl-2.0/
- * 
+ *
  * SPDX-License-Identifier: EPL-2.0
- * 
+ *
  * Contributors:
  *  Eurotech
  *******************************************************************************/
@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
 import org.apache.commons.io.Charsets;
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
@@ -96,7 +95,9 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
         try {
             requestHandlerRegistry.registerRequestHandler(APP_ID, this);
         } catch (KuraException e) {
-            logger.info("Unable to register request handler {} in {}", APP_ID,
+            logger.info(
+                    "Unable to register request handler {} in {}",
+                    APP_ID,
                     requestHandlerRegistry.getClass().getName());
         }
     }
@@ -105,7 +106,9 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
         try {
             requestHandlerRegistry.unregister(APP_ID);
         } catch (KuraException e) {
-            logger.info("Unable to register request handler {} in {}", APP_ID,
+            logger.info(
+                    "Unable to register request handler {} in {}",
+                    APP_ID,
                     requestHandlerRegistry.getClass().getName());
         }
     }
@@ -172,7 +175,6 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
 
     protected void deactivate(ComponentContext componentContext) {
         logger.info("Request handler {} is deactivating!", APP_ID);
-
     }
 
     @SuppressWarnings("unchecked")
@@ -252,8 +254,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
             if (!runAsync) {
-                CommandStatus status = executeProcessSync(dir, cmdarray, envp, getTimeout(commandReq), outputStream,
-                        errorStream);
+                CommandStatus status =
+                        executeProcessSync(dir, cmdarray, envp, getTimeout(commandReq), outputStream, errorStream);
                 prepareResponse(commandResp, status, outputStream, errorStream);
             } else {
                 executeProcessAsync(dir, cmdarray, envp, getTimeout(commandReq), outputStream, errorStream);
@@ -280,8 +282,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
                 int timeout = getDefaultTimeout();
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-                CommandStatus stats = executeProcessSync(defaultDir, cmdArray, environment, timeout, outputStream,
-                        errorStream);
+                CommandStatus stats =
+                        executeProcessSync(defaultDir, cmdArray, environment, timeout, outputStream, errorStream);
                 if (stats.getExitStatus() != null && stats.getExitStatus().isSuccessful()) {
                     return new String(((ByteArrayOutputStream) stats.getOutputStream()).toByteArray(), Charsets.UTF_8);
                 } else {
@@ -366,8 +368,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
         return pwd.equals(receivedPassword);
     }
 
-    private CommandStatus executeProcessSync(String dir, String[] cmdarray, String[] envp, int timeout,
-            OutputStream out, OutputStream err) {
+    private CommandStatus executeProcessSync(
+            String dir, String[] cmdarray, String[] envp, int timeout, OutputStream out, OutputStream err) {
         Command command = new Command(cmdarray);
         command.setTimeout(timeout);
         command.setDirectory(dir);
@@ -378,8 +380,8 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
         return getExecutorService().execute(command);
     }
 
-    private void executeProcessAsync(String dir, String[] cmdarray, String[] envp, int timeout, OutputStream out,
-            OutputStream err) {
+    private void executeProcessAsync(
+            String dir, String[] cmdarray, String[] envp, int timeout, OutputStream out, OutputStream err) {
         Consumer<CommandStatus> callback = status -> {
             // Do nothing...
         };
@@ -400,7 +402,9 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
     private Map<String, String> getEnvironmentMap(String[] envp) {
         Map<String, String> environment = new HashMap<>();
         if (envp != null && envp.length > 0) {
-            Arrays.asList(envp).stream().filter(pair -> !pair.isEmpty()).map(pair -> pair.split("="))
+            Arrays.asList(envp).stream()
+                    .filter(pair -> !pair.isEmpty())
+                    .map(pair -> pair.split("="))
                     .forEach(item -> environment.put(item[0], item[1]));
         }
         return environment;
@@ -423,7 +427,10 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
         return cmdarray;
     }
 
-    private void prepareResponse(KuraCommandResponsePayload resp, CommandStatus status, ByteArrayOutputStream out,
+    private void prepareResponse(
+            KuraCommandResponsePayload resp,
+            CommandStatus status,
+            ByteArrayOutputStream out,
             ByteArrayOutputStream err) {
         resp.setStderr(new String(err.toByteArray(), Charsets.UTF_8));
         resp.setStdout(new String(out.toByteArray(), Charsets.UTF_8));
@@ -438,5 +445,4 @@ public class CommandCloudApp implements ConfigurableComponent, PasswordCommandSe
             }
         }
     }
-
 }

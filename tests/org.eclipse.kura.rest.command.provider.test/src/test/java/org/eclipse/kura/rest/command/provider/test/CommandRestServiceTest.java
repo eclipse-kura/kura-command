@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023, 2025 Eurotech and/or its affiliates and others
+ * Copyright (c) 2023, 2026 Eurotech and/or its affiliates and others
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -14,20 +14,16 @@ package org.eclipse.kura.rest.command.provider.test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.ws.rs.core.Response;
-
 import org.eclipse.kura.KuraException;
 import org.eclipse.kura.cloud.app.command.CommandCloudApp;
 import org.eclipse.kura.cloud.app.command.KuraCommandRequestPayload;
@@ -104,7 +100,7 @@ public class CommandRestServiceTest {
         givenCommandRestService();
 
         givenCommand("ls");
-        givenArguments(new String[] { "arg1", "arg2" });
+        givenArguments(new String[] {"arg1", "arg2"});
         givenEnvironmentPairs(Collections.singletonMap("testvar", "testValue"));
         givenWorkingDirectory("/tmp");
         givenPassword("password");
@@ -120,12 +116,12 @@ public class CommandRestServiceTest {
         thenVerifyDoExecIsRun();
         thenCommandRequestIs(Arrays.asList("command"));
         thenCommandIs("ls");
-        thenArgumentsIs(new String[] { "arg1", "arg2" });
+        thenArgumentsIs(new String[] {"arg1", "arg2"});
         thenEnvironmentPairsIs(Collections.singletonMap("testvar", "testValue"));
         thenWorkingDirectoryIs("/tmp");
         thenPasswordIs("password");
         thenIsRunAsyncIs(false);
-        thenZipBytesIs(new byte[] { 'z', 'i', 'p', 'B', 'y', 't', 'e', 's' });
+        thenZipBytesIs(new byte[] {'z', 'i', 'p', 'B', 'y', 't', 'e', 's'});
 
         thenVerifyKuraResponseStdoutIs("example stdout 3");
         thenVerifyKuraResponseStderrIs("example stderr 3");
@@ -139,7 +135,7 @@ public class CommandRestServiceTest {
         givenCommandRestService();
 
         givenCommand("ls");
-        givenArguments(new String[] { "arg1", "arg2" });
+        givenArguments(new String[] {"arg1", "arg2"});
         givenEnvironmentPairs(Collections.singletonMap("testvar", "testValue"));
         givenWorkingDirectory("/tmp");
         givenPassword("password");
@@ -155,12 +151,12 @@ public class CommandRestServiceTest {
         thenVerifyDoExecIsRun();
         thenCommandRequestIs(Arrays.asList("command"));
         thenCommandIs("ls");
-        thenArgumentsIs(new String[] { "arg1", "arg2" });
+        thenArgumentsIs(new String[] {"arg1", "arg2"});
         thenEnvironmentPairsIs(Collections.singletonMap("testvar", "testValue"));
         thenWorkingDirectoryIs("/tmp");
         thenPasswordIs("password");
         thenIsRunAsyncIs(true);
-        thenZipBytesIs(new byte[] { 'z', 'i', 'p', 'B', 'y', 't', 'e', 's' });
+        thenZipBytesIs(new byte[] {'z', 'i', 'p', 'B', 'y', 't', 'e', 's'});
     }
 
     private void givenCommandCloudApp() throws KuraException {
