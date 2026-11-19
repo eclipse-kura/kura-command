@@ -24,7 +24,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,8 +47,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
-import org.eclipse.kura.cloud.CloudClient;
-import org.eclipse.kura.cloud.CloudService;
 import org.eclipse.kura.cloudconnection.message.KuraMessage;
 import org.eclipse.kura.configuration.Password;
 import org.eclipse.kura.core.linux.executor.LinuxExitStatus;
@@ -111,9 +108,6 @@ public class CommandCloudAppTest {
         properties.put("key", "value");
         properties.put("command.enable", true);
 
-        CloudService clsMock = mock(CloudService.class);
-        when(clsMock.newCloudClient(anyString())).thenThrow(new KuraException(KuraErrorCode.CLOSED_DEVICE));
-
         CommandCloudApp cca = new CommandCloudApp();
         cca.setCryptoService(csMock);
 
@@ -148,11 +142,6 @@ public class CommandCloudAppTest {
         properties.put(passKey, new String(password));
         properties.put("key", "value");
         properties.put("command.enable", true);
-
-        CloudClient ccMock = mock(CloudClient.class);
-
-        CloudService clsMock = mock(CloudService.class);
-        when(clsMock.newCloudClient(anyString())).thenReturn(ccMock);
 
         CommandCloudApp cca = new CommandCloudApp();
         TestUtil.setFieldValue(cca, "currentStatus", true);
